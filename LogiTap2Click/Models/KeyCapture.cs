@@ -15,6 +15,8 @@
         IKeyboardEventSource keyboardESrc;
         //IMouseEventSource mouseESrc;
 
+        int clickDetMs => Properties.Settings.Default.ClickDetMs;
+
         public KeyCapture()
         {
             keyboardESrc = default;
@@ -30,43 +32,43 @@
             //mouseESrc.MouseEvent += MouseESrc_MouseEvent;
         }
 
-        bool isKdLWinEx = false;
-        bool isKdD = false;
+        DateTime dtKdLWinEx = DateTime.Now;
+        DateTime dtKdD = DateTime.Now;
 
         void KeyboardESrc_KeyDown(object sender, EventSourceEventArgs<WindowsInput.Events.KeyDown> e)
         {
             if (e.Data.Key == WindowsInput.Events.KeyCode.LWin && !e.Data.Extended)
             {
                 Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {e.Data.Key} {(e.Data.Extended?"Extended":"")}");
-                isKdLWinEx = true;
                 e.Next_Hook_Enabled = false;
+                dtKdLWinEx = DateTime.Now;
             }
-            else if (e.Data.Key == WindowsInput.Events.KeyCode.D && isKdLWinEx)
+            else if (e.Data.Key == WindowsInput.Events.KeyCode.D &&
+                dtKdLWinEx.AddMilliseconds(clickDetMs) >= DateTime.Now)
             {
                 Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {e.Data.Key} {(e.Data.Extended?"Extended":"")}");
-                isKdD = true;
                 e.Next_Hook_Enabled = false;
+                dtKdD = DateTime.Now;
             }
         }
 
         void KeyboardESrc_KeyUp(object sender, EventSourceEventArgs<WindowsInput.Events.KeyUp> e)
         {
             if ((e.Data.Key == WindowsInput.Events.KeyCode.LWin && !e.Data.Extended)
-              || (e.Data.Key == WindowsInput.Events.KeyCode.D && isKdLWinEx))
+              || (e.Data.Key == WindowsInput.Events.KeyCode.D &&
+                dtKdLWinEx.AddMilliseconds(clickDetMs) >= DateTime.Now)
+                )
             {
-                Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {e.Data.Key} {(e.Data.Extended?"Extended":"")}");
-                if (isKdLWinEx && isKdD)
+                Debug.WriteLine($"{System.Reflection.MethodBase.GetCurrentMethod()?.Name}: {e.Data.Key} {(e.Data.Extended ? "Extended" : "")}");
+                if (dtKdD.AddMilliseconds(clickDetMs) >= DateTime.Now)
                 {
-                    isKdLWinEx = false;
-                    isKdD = false;
                     e.Next_Hook_Enabled = false;
                     Simulate.Events()
                         .Click(ButtonCode.Right)
                         .Invoke();
                 }
-                else if (isKdLWinEx)
+                else
                 {
-                    isKdD = false;
                     e.Next_Hook_Enabled = false;
                     Simulate.Events()
                         .Click(ButtonCode.Left)
